@@ -1,0 +1,88 @@
+---
+title: "First Steps"
+description: "Your first steps after installation - creating your first project."
+date: 2024-01-02
+---
+
+import Callout from '@/components/mdx/Callout.astro';
+
+# First Steps
+
+Now that you have the project installed, let's walk through creating your first page.
+
+## Project Structure
+
+```
+src/
+├── components/     # Reusable UI components
+├── content/        # Blog posts and documentation
+├── layouts/        # Page layouts
+├── pages/          # Route definitions
+└── styles/         # Global styles and themes
+```
+
+## Creating Your First Post
+
+### 1. Choose a Topic
+
+Navigate to `src/content/blog/` and either use an existing topic folder or create a new one.
+
+### 2. Create the Topic Metadata
+
+If creating a new topic, add a `_topic.yaml` file:
+
+```yaml
+slug: my-topic
+title: My Topic
+description: Description of what this topic covers.
+banner: /images/topics/my-topic.jpg
+```
+
+### 3. Write Your Post
+
+Create an MDX file in your topic folder:
+
+```mdx
+---
+title: "My First Post"
+description: "A brief description of my post."
+date: 2024-01-15
+---
+
+# My First Post
+
+Your content goes here. You can use Markdown and custom components.
+```
+
+<Callout type="tip">
+Use the frontmatter `draft: true` to hide posts while you're still working on them.
+</Callout>
+
+## Using Components
+
+MDX allows you to import and use components:
+
+```mdx
+import Callout from '@/components/mdx/Callout.astro';
+
+<Callout type="note">
+This is a note callout.
+</Callout>
+```
+
+## Building for Production
+
+When you're ready to deploy:
+
+```bash
+npm run build
+npm run preview
+```
+
+The `preview` command lets you test the production build locally.
+
+## What's Next?
+
+- Learn about [theming](/docs/customization/themes)
+- Explore [MDX components](/docs/components/overview)
+- Set up [search](/docs/features/search)

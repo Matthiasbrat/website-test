@@ -1,0 +1,140 @@
+---
+// Client-side router for smooth navigation without full page reloads
+// Works with Astro's prefetching
+---
+
+<script is:inline>
+  (function() {
+    // Only run in browser
+    if (typeof window === 'undefined') return;
+
+    // Check if View Transitions API is supported
+    const supportsViewTransitions = 'startViewTransition' in document;
+
+    // Navigate to a new URL
+    async function navigate(url, pushState = true) {
+      try {
+        // Fetch the new page
+        const response = await fetch(url);
+        if (!response.ok) {
+          window.location.href = url;
+          return;
+        }
+
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Get the new content
+        const newMain = doc.querySelector('main');
+        const newTitle = doc.querySelector('title')?.textContent;
+        const currentMain = document.querySelector('main');
+
+        if (!newMain || !currentMain) {
+          window.location.href = url;
+          return;
+        }
+
+        // Update the page
+        const updateDOM = () => {
+          currentMain.innerHTML = newMain.innerHTML;
+          if (newTitle) document.title = newTitle;
+
+          // Update meta tags
+          const newMeta = doc.querySelectorAll('meta[property], meta[name="description"]');
+          newMeta.forEach(meta => {
+            const prop = meta.getAttribute('property') || meta.getAttribute('name');
+            if (prop) {
+              const existing = document.querySelector(`meta[property="${prop}"], meta[name="${prop}"]`);
+              if (existing) {
+                existing.setAttribute('content', meta.getAttribute('content') || '');
+              }
+            }
+          });
+
+          // Update URL
+          if (pushState) {
+            history.pushState({}, '', url);
+          }
+
+          // Scroll to top or anchor
+          const hash = new URL(url, window.location.origin).hash;
+          if (hash) {
+            const target = document.querySelector(hash);
+            if (target) {
+              target.scrollIntoView();
+            }
+          } else {
+            window.scrollTo(0, 0);
+          }
+
+          // Dispatch custom event for other scripts
+          document.dispatchEvent(new CustomEvent('astro:page-load'));
+
+          // Re-run inline scripts in the new content
+          const scripts = currentMain.querySelectorAll('script');
+          scripts.forEach(script => {
+            const newScript = document.createElement('script');
+            if (script.src) {
+              newScript.src = script.src;
+            } else {
+              newScript.textContent = script.textContent;
+            }
+            script.parentNode?.replaceChild(newScript, script);
+          });
+        };
+
+        // Use View Transitions if available
+        if (supportsViewTransitions) {
+          document.startViewTransition(updateDOM);
+        } else {
+          updateDOM();
+        }
+
+      } catch (error) {
+        console.error('Navigation error:', error);
+        window.location.href = url;
+      }
+    }
+
+    // Handle link clicks
+    document.addEventListener('click', (e) => {
+      const link = (e.target as Element).closest('a');
+      if (!link) return;
+
+      const href = link.getAttribute('href');
+      if (!href) return;
+
+      // Skip external links, downloads, and special protocols
+      if (
+        link.target === '_blank' ||
+        link.hasAttribute('download') ||
+        href.startsWith('http') ||
+        href.startsWith('mailto:') ||
+        href.startsWith('tel:') ||
+        href.startsWith('#') ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey
+      ) {
+        return;
+      }
+
+      // Handle internal navigation
+      e.preventDefault();
+      const url = new URL(href, window.location.origin).href;
+
+      // Don't navigate if already on this page (unless it's an anchor)
+      if (url === window.location.href && !href.includes('#')) {
+        return;
+      }
+
+      navigate(url);
+    });
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', () => {
+      navigate(window.location.href, false);
+    });
+  })();
+</script>

@@ -1,0 +1,105 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SidePanel from '../../components/SidePanel.astro';
+import EmojiReactions from '../../components/EmojiReactions.astro';
+import Comments from '../../components/Comments.astro';
+import { formatDate, getAdjacentPosts, loadTopicMetadata, getTopicSlugFromPost } from '../../lib/content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts
+    .filter(post => !post.data.draft)
+    .map(post => ({
+      params: { slug: post.slug },
+      props: { post },
+    }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await post.render();
+
+const topicSlug = getTopicSlugFromPost(post);
+const topic = await loadTopicMetadata('blog', topicSlug);
+const { prev, next } = await getAdjacentPosts('blog', post);
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  ogImage={post.data.banner}
+  article={true}
+  publishedTime={post.data.date}
+  modifiedTime={post.data.updated}
+>
+  <div class="lg:mr-72">
+    <article class="max-w-4xl mx-auto px-4 py-12">
+      <!-- Header -->
+      <header class="mb-12">
+        {post.data.banner && (
+          <div class="aspect-[2/1] rounded-xl overflow-hidden mb-8">
+            <img
+              src={post.data.banner}
+              alt={post.data.title}
+              class="w-full h-full object-cover"
+            />
+          </div>
+        )}
+
+        <!-- Breadcrumb -->
+        <nav class="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <a href="/blog" class="hover:text-accent">Blog</a>
+          <span>/</span>
+          {topic && (
+            <>
+              <a href={`/topics/${topic.slug}`} class="hover:text-accent">{topic.title}</a>
+              <span>/</span>
+            </>
+          )}
+          <span class="text-text-primary truncate">{post.data.title}</span>
+        </nav>
+
+        <h1 class="text-4xl font-bold text-text-heading mb-4 text-balance">
+          {post.data.title}
+        </h1>
+
+        <p class="text-xl text-text-secondary mb-6">
+          {post.data.description}
+        </p>
+
+        <div class="flex items-center gap-4 text-sm text-text-secondary">
+          <time datetime={post.data.date.toISOString()}>
+            {formatDate(post.data.date)}
+          </time>
+          {post.data.updated && (
+            <span>
+              Updated: {formatDate(post.data.updated)}
+            </span>
+          )}
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="prose prose-lg max-w-none">
+        <Content />
+      </div>
+
+      <!-- Reactions & Comments -->
+      <footer class="mt-16 pt-8 border-t border-border-subtle">
+        <EmojiReactions postSlug={post.slug} />
+        <div class="mt-12">
+          <Comments postSlug={post.slug} />
+        </div>
+      </footer>
+    </article>
+  </div>
+
+  <!-- Side Panel -->
+  <SidePanel
+    headings={headings}
+    prevPost={prev}
+    nextPost={next}
+    type="blog"
+    topicSlug={topicSlug}
+  />
+</BaseLayout>

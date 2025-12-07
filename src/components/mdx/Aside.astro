@@ -1,0 +1,35 @@
+---
+interface Props {
+  type?: 'note' | 'warning' | 'tip' | 'historical' | 'tangent';
+  title?: string;
+}
+
+const { type = 'note', title } = Astro.props;
+
+const typeStyles = {
+  note: 'border-info',
+  warning: 'border-warning',
+  tip: 'border-success',
+  historical: 'border-text-secondary',
+  tangent: 'border-accent',
+};
+---
+
+<aside class={`float-right w-64 ml-6 mb-4 pl-4 border-l-2 text-sm text-text-secondary hidden lg:block ${typeStyles[type]}`}>
+  {title && (
+    <p class="font-semibold text-text-primary mb-1">{title}</p>
+  )}
+  <div class="[&>p]:m-0 [&>p:not(:last-child)]:mb-2">
+    <slot />
+  </div>
+</aside>
+
+<!-- Mobile version (inline) -->
+<div class={`lg:hidden my-4 p-4 rounded-lg bg-bg-secondary border-l-4 text-sm ${typeStyles[type]}`}>
+  {title && (
+    <p class="font-semibold text-text-primary mb-1">{title}</p>
+  )}
+  <div class="text-text-secondary [&>p]:m-0 [&>p:not(:last-child)]:mb-2">
+    <slot />
+  </div>
+</div>

@@ -1,0 +1,120 @@
+---
+interface Props {
+  postSlug: string;
+}
+
+const { postSlug } = Astro.props;
+
+const emojis = [
+  { emoji: '👍', label: 'Like' },
+  { emoji: '❤️', label: 'Love' },
+  { emoji: '🎉', label: 'Celebrate' },
+  { emoji: '🤔', label: 'Think' },
+  { emoji: '👀', label: 'Eyes' },
+  { emoji: '🚀', label: 'Rocket' },
+];
+---
+
+<div class="emoji-reactions" data-post-slug={postSlug}>
+  <h3 class="text-sm font-semibold text-text-secondary mb-4">Reactions</h3>
+
+  <div class="flex flex-wrap gap-2">
+    {emojis.map(({ emoji, label }) => (
+      <button
+        class="reaction-btn flex items-center gap-2 px-4 py-2 rounded-lg border border-border-subtle hover:border-accent hover:bg-bg-hover transition-all"
+        data-emoji={emoji}
+        title={label}
+      >
+        <span class="text-lg">{emoji}</span>
+        <span class="reaction-count text-sm text-text-secondary">0</span>
+      </button>
+    ))}
+  </div>
+</div>
+
+<script>
+  const container = document.querySelector('.emoji-reactions');
+  const postSlug = container?.getAttribute('data-post-slug');
+  const buttons = container?.querySelectorAll('.reaction-btn');
+
+  // Get user's anonymous ID from localStorage
+  function getAnonymousId() {
+    let id = localStorage.getItem('anonymous_user_id');
+    if (!id) {
+      id = 'anon_' + Math.random().toString(36).slice(2, 11);
+      localStorage.setItem('anonymous_user_id', id);
+    }
+    return id;
+  }
+
+  // Load reactions
+  async function loadReactions() {
+    try {
+      const response = await fetch(`/api/reactions?slug=${encodeURIComponent(postSlug || '')}`);
+      if (response.ok) {
+        const data = await response.json();
+        updateReactionCounts(data.counts);
+        updateUserReactions(data.userReactions || []);
+      }
+    } catch (error) {
+      console.error('Failed to load reactions:', error);
+    }
+  }
+
+  // Update reaction counts in UI
+  function updateReactionCounts(counts: Record<string, number>) {
+    buttons?.forEach(btn => {
+      const emoji = btn.getAttribute('data-emoji');
+      const countEl = btn.querySelector('.reaction-count');
+      if (emoji && countEl) {
+        countEl.textContent = String(counts[emoji] || 0);
+      }
+    });
+  }
+
+  // Update which reactions the user has given
+  function updateUserReactions(userReactions: string[]) {
+    buttons?.forEach(btn => {
+      const emoji = btn.getAttribute('data-emoji');
+      if (emoji) {
+        const hasReacted = userReactions.includes(emoji);
+        btn.classList.toggle('bg-bg-active', hasReacted);
+        btn.classList.toggle('border-accent', hasReacted);
+      }
+    });
+  }
+
+  // Toggle reaction
+  async function toggleReaction(emoji: string) {
+    try {
+      const response = await fetch('/api/reactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: postSlug,
+          emoji,
+          anonymousId: getAnonymousId(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        updateReactionCounts(data.counts);
+        updateUserReactions(data.userReactions || []);
+      }
+    } catch (error) {
+      console.error('Failed to toggle reaction:', error);
+    }
+  }
+
+  // Event listeners
+  buttons?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const emoji = btn.getAttribute('data-emoji');
+      if (emoji) toggleReaction(emoji);
+    });
+  });
+
+  // Load initial state
+  loadReactions();
+</script>

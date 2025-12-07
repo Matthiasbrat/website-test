@@ -1,0 +1,45 @@
+---
+// This script runs immediately to prevent flash of wrong theme
+---
+
+<script is:inline>
+  (function() {
+    const themes = [
+      'one-dark', 'one-light', 'dracula', 'nord', 'solarized-dark', 'solarized-light',
+      'github-dark', 'github-light', 'monokai', 'monokai-pro', 'gruvbox-dark', 'gruvbox-light',
+      'tokyo-night', 'tokyo-night-light', 'catppuccin-mocha', 'catppuccin-macchiato',
+      'catppuccin-frappe', 'catppuccin-latte', 'palenight', 'synthwave84', 'ayu-dark',
+      'ayu-light', 'ayu-mirage', 'material-dark', 'material-light', 'material-ocean',
+      'night-owl', 'light-owl', 'cobalt2', 'shades-of-purple', 'horizon-dark',
+      'horizon-light', 'andromeda', 'vesper', 'rose-pine', 'rose-pine-moon',
+      'rose-pine-dawn', 'everforest-dark', 'everforest-light', 'kanagawa', 'oxocarbon',
+      'matthias'
+    ];
+
+    function getStoredTheme() {
+      try {
+        return localStorage.getItem('theme');
+      } catch {
+        return null;
+      }
+    }
+
+    function getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function setTheme(themeId) {
+      const html = document.documentElement;
+      themes.forEach(t => html.classList.remove('theme-' + t));
+      html.classList.add('theme-' + themeId);
+    }
+
+    const stored = getStoredTheme();
+    if (stored && themes.includes(stored)) {
+      setTheme(stored);
+    } else {
+      const systemTheme = getSystemTheme();
+      setTheme(systemTheme === 'dark' ? 'one-dark' : 'github-light');
+    }
+  })();
+</script>

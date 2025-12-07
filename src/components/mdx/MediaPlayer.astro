@@ -1,0 +1,35 @@
+---
+interface Props {
+  src: string;
+  title?: string;
+  type?: 'audio' | 'video';
+}
+
+const { src, title, type = 'audio' } = Astro.props;
+---
+
+<div class="my-6">
+  {title && (
+    <p class="text-sm font-medium text-text-secondary mb-2">{title}</p>
+  )}
+
+  {type === 'audio' ? (
+    <audio
+      src={src}
+      controls
+      class="w-full rounded-lg"
+      preload="metadata"
+    >
+      Your browser does not support the audio element.
+    </audio>
+  ) : (
+    <video
+      src={src}
+      controls
+      class="w-full rounded-lg"
+      preload="metadata"
+    >
+      Your browser does not support the video element.
+    </video>
+  )}
+</div>

@@ -1,0 +1,99 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getAllBlogPosts, getAllDocs, formatDate } from '../lib/content';
+import { siteConfig } from '../../site.config';
+
+const recentBlogPosts = (await getAllBlogPosts()).slice(0, 3);
+const recentDocs = (await getAllDocs()).slice(0, 3);
+---
+
+<BaseLayout>
+  <div class="max-w-6xl mx-auto px-4 py-16">
+    <!-- Hero Section -->
+    <section class="mb-16">
+      <h1 class="text-4xl md:text-5xl font-bold text-text-heading mb-4 text-balance">
+        {siteConfig.title}
+      </h1>
+      <p class="text-xl text-text-secondary max-w-2xl">
+        {siteConfig.description}
+      </p>
+    </section>
+
+    <!-- Quick Links -->
+    <section class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+      {siteConfig.navigation.map((item) => (
+        <a
+          href={item.href}
+          class="glass-card p-6 card-hover block"
+        >
+          <h3 class="font-semibold text-text-heading mb-2">{item.label}</h3>
+          <p class="text-sm text-text-secondary">
+            {item.label === 'Blog' && 'Technical articles and tutorials'}
+            {item.label === 'Docs' && 'Documentation and guides'}
+            {item.label === 'Topics' && 'Browse by category'}
+            {item.label === 'Referrals' && 'People I recommend'}
+          </p>
+        </a>
+      ))}
+    </section>
+
+    <!-- Recent Posts -->
+    <div class="grid lg:grid-cols-2 gap-12">
+      <!-- Recent Blog Posts -->
+      {recentBlogPosts.length > 0 && (
+        <section>
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-text-heading">Recent Posts</h2>
+            <a href="/blog" class="text-sm text-accent hover:text-accent-hover">
+              View all &rarr;
+            </a>
+          </div>
+          <div class="space-y-4">
+            {recentBlogPosts.map((post) => (
+              <a
+                href={`/blog/${post.slug}`}
+                class="block p-4 rounded-xl border border-border-subtle hover:border-accent hover:bg-bg-hover transition-colors"
+              >
+                <h3 class="font-medium text-text-heading mb-1">{post.data.title}</h3>
+                <p class="text-sm text-text-secondary line-clamp-2 mb-2">
+                  {post.data.description}
+                </p>
+                <time class="text-xs text-text-secondary">
+                  {formatDate(post.data.date)}
+                </time>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <!-- Recent Docs -->
+      {recentDocs.length > 0 && (
+        <section>
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-text-heading">Documentation</h2>
+            <a href="/docs" class="text-sm text-accent hover:text-accent-hover">
+              View all &rarr;
+            </a>
+          </div>
+          <div class="space-y-4">
+            {recentDocs.map((doc) => (
+              <a
+                href={`/docs/${doc.slug}`}
+                class="block p-4 rounded-xl border border-border-subtle hover:border-accent hover:bg-bg-hover transition-colors"
+              >
+                <h3 class="font-medium text-text-heading mb-1">{doc.data.title}</h3>
+                <p class="text-sm text-text-secondary line-clamp-2 mb-2">
+                  {doc.data.description}
+                </p>
+                <time class="text-xs text-text-secondary">
+                  {formatDate(doc.data.date)}
+                </time>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  </div>
+</BaseLayout>

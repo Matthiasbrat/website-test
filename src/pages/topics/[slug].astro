@@ -1,0 +1,83 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAllTopics, getPostsByTopic, loadTopicMetadata, formatDate } from '../../lib/content';
+
+export async function getStaticPaths() {
+  const allTopics = await getAllTopics();
+  return allTopics.map(({ type, topic }) => ({
+    params: { slug: topic.slug },
+    props: { type, topic },
+  }));
+}
+
+const { slug } = Astro.params;
+const { type, topic } = Astro.props;
+
+const posts = await getPostsByTopic(type, topic.slug);
+---
+
+<BaseLayout title={topic.title} description={topic.description}>
+  <div class="max-w-4xl mx-auto px-4 py-12">
+    <!-- Header -->
+    <header class="mb-12">
+      {topic.banner && (
+        <div class="aspect-[3/1] rounded-xl overflow-hidden mb-8">
+          <img
+            src={topic.banner}
+            alt={topic.title}
+            class="w-full h-full object-cover"
+          />
+        </div>
+      )}
+      <div class="flex items-center gap-3 mb-4">
+        <span class="px-3 py-1 text-sm rounded-lg bg-bg-secondary text-text-secondary border border-border-subtle">
+          {type}
+        </span>
+        <span class="text-text-secondary">
+          {posts.length} {posts.length === 1 ? 'post' : 'posts'}
+        </span>
+      </div>
+      <h1 class="text-4xl font-bold text-text-heading mb-4">{topic.title}</h1>
+      <p class="text-xl text-text-secondary">{topic.description}</p>
+    </header>
+
+    <!-- Posts List -->
+    <div class="space-y-4">
+      {posts.map((post) => {
+        const postSlug = post.slug.split('/').pop();
+        return (
+          <a
+            href={`/${type}/${topic.slug}/${postSlug}`}
+            class="block p-6 rounded-xl border border-border-subtle hover:border-accent hover:bg-bg-hover transition-colors group"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <h2 class="text-lg font-semibold text-text-heading group-hover:text-accent transition-colors mb-2">
+                  {post.data.title}
+                </h2>
+                <p class="text-text-secondary text-sm line-clamp-2 mb-3">
+                  {post.data.description}
+                </p>
+                <div class="flex items-center gap-4 text-xs text-text-secondary">
+                  <time>{formatDate(post.data.date)}</time>
+                  {post.data.updated && (
+                    <span>Updated: {formatDate(post.data.updated)}</span>
+                  )}
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-text-secondary group-hover:text-accent flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+
+    {posts.length === 0 && (
+      <div class="text-center py-12">
+        <p class="text-text-secondary">No posts in this topic yet.</p>
+      </div>
+    )}
+  </div>
+</BaseLayout>

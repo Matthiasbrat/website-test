@@ -1,0 +1,164 @@
+---
+import type { Post } from '../lib/content';
+
+interface Props {
+  headings: { depth: number; slug: string; text: string }[];
+  prevPost?: Post | null;
+  nextPost?: Post | null;
+  type?: 'blog' | 'docs';
+  topicSlug?: string;
+}
+
+const { headings, prevPost, nextPost, type = 'blog', topicSlug } = Astro.props;
+
+// Filter to h2 and h3 only
+const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 4);
+---
+
+<!-- Mobile TOC toggle -->
+<button
+  id="toc-toggle"
+  class="lg:hidden fixed bottom-4 right-4 z-40 p-3 rounded-full bg-accent text-accent-text shadow-lg"
+  aria-label="Toggle table of contents"
+>
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+  </svg>
+</button>
+
+<!-- Side panel -->
+<aside
+  id="side-panel"
+  class="hidden lg:block fixed right-0 top-0 h-screen w-72 pt-20 pb-8 px-4 overflow-y-auto border-l border-border-subtle bg-bg-primary/50 backdrop-blur-sm z-30"
+>
+  <!-- Mobile close button -->
+  <button
+    id="toc-close"
+    class="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-bg-hover"
+    aria-label="Close"
+  >
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  </button>
+
+  <!-- Table of Contents -->
+  {tocHeadings.length > 0 && (
+    <div class="mb-8">
+      <h3 class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">
+        On this page
+      </h3>
+      <nav id="toc-nav">
+        <ul class="space-y-1">
+          {tocHeadings.map((heading) => (
+            <li style={`padding-left: ${(heading.depth - 2) * 12}px`}>
+              <a
+                href={`#${heading.slug}`}
+                class="toc-link text-sm"
+                data-heading={heading.slug}
+              >
+                {heading.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  )}
+
+  <!-- Navigation -->
+  <div class="space-y-3">
+    {prevPost && (
+      <a
+        href={`/${type}/${topicSlug}/${prevPost.slug.split('/').pop()}`}
+        class="block p-3 rounded-lg border border-border-subtle hover:border-accent hover:bg-bg-hover transition-colors group"
+      >
+        <span class="text-xs text-text-secondary">Previous</span>
+        <span class="block text-sm font-medium text-text-primary group-hover:text-accent mt-1 truncate">
+          {prevPost.data.title}
+        </span>
+      </a>
+    )}
+
+    {nextPost && (
+      <a
+        href={`/${type}/${topicSlug}/${nextPost.slug.split('/').pop()}`}
+        class="block p-3 rounded-lg border border-border-subtle hover:border-accent hover:bg-bg-hover transition-colors group text-right"
+      >
+        <span class="text-xs text-text-secondary">Next</span>
+        <span class="block text-sm font-medium text-text-primary group-hover:text-accent mt-1 truncate">
+          {nextPost.data.title}
+        </span>
+      </a>
+    )}
+  </div>
+</aside>
+
+<script>
+  const sidePanel = document.getElementById('side-panel');
+  const tocToggle = document.getElementById('toc-toggle');
+  const tocClose = document.getElementById('toc-close');
+  const tocNav = document.getElementById('toc-nav');
+
+  // Mobile toggle
+  tocToggle?.addEventListener('click', () => {
+    sidePanel?.classList.toggle('hidden');
+    sidePanel?.classList.toggle('fixed');
+    sidePanel?.classList.toggle('inset-0');
+    sidePanel?.classList.toggle('w-full');
+    sidePanel?.classList.toggle('w-72');
+  });
+
+  tocClose?.addEventListener('click', () => {
+    sidePanel?.classList.add('hidden');
+    sidePanel?.classList.remove('fixed', 'inset-0', 'w-full');
+    sidePanel?.classList.add('w-72');
+  });
+
+  // Active heading highlight
+  if (tocNav) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute('id');
+            const links = tocNav.querySelectorAll('.toc-link');
+            links.forEach((link) => {
+              const isActive = link.getAttribute('data-heading') === id;
+              link.classList.toggle('active', isActive);
+            });
+          }
+        });
+      },
+      {
+        rootMargin: '-80px 0px -80% 0px',
+        threshold: 0,
+      }
+    );
+
+    // Observe all headings
+    document.querySelectorAll('h2[id], h3[id], h4[id]').forEach((heading) => {
+      observer.observe(heading);
+    });
+  }
+
+  // Smooth scroll to anchor (while respecting no-smooth-scroll preference)
+  tocNav?.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const href = link.getAttribute('href');
+      if (href) {
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({ block: 'start' });
+          history.pushState({}, '', href);
+
+          // Close mobile panel
+          if (window.innerWidth < 1024) {
+            sidePanel?.classList.add('hidden');
+          }
+        }
+      }
+    });
+  });
+</script>

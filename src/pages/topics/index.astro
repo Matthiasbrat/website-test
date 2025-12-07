@@ -1,0 +1,68 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAllTopics, getTopicPostCount } from '../../lib/content';
+
+const allTopics = await getAllTopics();
+
+// Get post counts
+const topicsWithCounts = await Promise.all(
+  allTopics.map(async ({ type, topic }) => ({
+    type,
+    topic,
+    count: await getTopicPostCount(type, topic.slug),
+  }))
+);
+---
+
+<BaseLayout title="Topics" description="Browse all topics">
+  <div class="max-w-6xl mx-auto px-4 py-12">
+    <header class="mb-12">
+      <h1 class="text-4xl font-bold text-text-heading mb-4">Topics</h1>
+      <p class="text-text-secondary text-lg">
+        Browse content by category
+      </p>
+    </header>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {topicsWithCounts.map(({ type, topic, count }) => (
+        <a
+          href={`/topics/${topic.slug}`}
+          class="glass-card overflow-hidden card-hover group"
+        >
+          {topic.banner && (
+            <div class="aspect-video bg-bg-tertiary overflow-hidden">
+              <img
+                src={topic.banner}
+                alt={topic.title}
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+              />
+            </div>
+          )}
+          <div class="p-6">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="px-2 py-0.5 text-xs rounded bg-bg-tertiary text-text-secondary">
+                {type}
+              </span>
+              <span class="text-xs text-text-secondary">
+                {count} {count === 1 ? 'post' : 'posts'}
+              </span>
+            </div>
+            <h2 class="text-xl font-semibold text-text-heading mb-2 group-hover:text-accent transition-colors">
+              {topic.title}
+            </h2>
+            <p class="text-text-secondary text-sm line-clamp-2">
+              {topic.description}
+            </p>
+          </div>
+        </a>
+      ))}
+    </div>
+
+    {topicsWithCounts.length === 0 && (
+      <div class="text-center py-12">
+        <p class="text-text-secondary">No topics found.</p>
+      </div>
+    )}
+  </div>
+</BaseLayout>

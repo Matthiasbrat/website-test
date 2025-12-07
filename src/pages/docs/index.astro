@@ -1,0 +1,79 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAllDocs, getTopics, formatDate, getTopicSlugFromPost } from '../../lib/content';
+
+const docs = await getAllDocs();
+const topics = await getTopics('docs');
+
+// Group docs by topic
+const docsByTopic = new Map<string, typeof docs>();
+topics.forEach(topic => {
+  docsByTopic.set(topic.slug, []);
+});
+docs.forEach(doc => {
+  const topicSlug = getTopicSlugFromPost(doc);
+  if (!docsByTopic.has(topicSlug)) {
+    docsByTopic.set(topicSlug, []);
+  }
+  docsByTopic.get(topicSlug)?.push(doc);
+});
+---
+
+<BaseLayout title="Documentation" description="Guides and documentation">
+  <div class="max-w-6xl mx-auto px-4 py-12">
+    <header class="mb-12">
+      <h1 class="text-4xl font-bold text-text-heading mb-4">Documentation</h1>
+      <p class="text-text-secondary text-lg">
+        Comprehensive guides and documentation to help you get started.
+      </p>
+    </header>
+
+    <!-- Docs by Topic -->
+    <div class="space-y-12">
+      {topics.map(topic => {
+        const topicDocs = docsByTopic.get(topic.slug) || [];
+        if (topicDocs.length === 0) return null;
+
+        return (
+          <section>
+            <div class="flex items-center gap-4 mb-6">
+              <h2 class="text-2xl font-bold text-text-heading">{topic.title}</h2>
+              <a
+                href={`/topics/${topic.slug}`}
+                class="text-sm text-accent hover:text-accent-hover"
+              >
+                View all &rarr;
+              </a>
+            </div>
+            <p class="text-text-secondary mb-6">{topic.description}</p>
+
+            <div class="grid md:grid-cols-2 gap-4">
+              {topicDocs.map(doc => {
+                const docSlug = doc.slug.split('/').pop();
+                return (
+                  <a
+                    href={`/docs/${topic.slug}/${docSlug}`}
+                    class="p-6 rounded-xl border border-border-subtle hover:border-accent hover:bg-bg-hover transition-colors group"
+                  >
+                    <h3 class="font-semibold text-text-heading group-hover:text-accent transition-colors mb-2">
+                      {doc.data.title}
+                    </h3>
+                    <p class="text-text-secondary text-sm line-clamp-2">
+                      {doc.data.description}
+                    </p>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+
+    {docs.length === 0 && (
+      <div class="text-center py-12">
+        <p class="text-text-secondary">No documentation yet.</p>
+      </div>
+    )}
+  </div>
+</BaseLayout>

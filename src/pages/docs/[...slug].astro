@@ -1,0 +1,118 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SidePanel from '../../components/SidePanel.astro';
+import EmojiReactions from '../../components/EmojiReactions.astro';
+import Comments from '../../components/Comments.astro';
+import { formatDate, getAdjacentPosts, loadTopicMetadata, getTopicSlugFromPost } from '../../lib/content';
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs');
+  return docs
+    .filter(doc => !doc.data.draft)
+    .map(doc => ({
+      params: { slug: doc.slug },
+      props: { doc },
+    }));
+}
+
+const { doc } = Astro.props;
+const { Content, headings } = await doc.render();
+
+const topicSlug = getTopicSlugFromPost(doc);
+const topic = await loadTopicMetadata('docs', topicSlug);
+const { prev, next } = await getAdjacentPosts('docs', doc);
+---
+
+<BaseLayout
+  title={doc.data.title}
+  description={doc.data.description}
+  ogImage={doc.data.banner}
+  article={true}
+  publishedTime={doc.data.date}
+  modifiedTime={doc.data.updated}
+>
+  <div class="lg:mr-72">
+    <article class="max-w-4xl mx-auto px-4 py-12">
+      <!-- Header -->
+      <header class="mb-12">
+        {doc.data.banner && (
+          <div class="aspect-[2/1] rounded-xl overflow-hidden mb-8">
+            <img
+              src={doc.data.banner}
+              alt={doc.data.title}
+              class="w-full h-full object-cover"
+            />
+          </div>
+        )}
+
+        <!-- Breadcrumb -->
+        <nav class="flex items-center gap-2 text-sm text-text-secondary mb-4">
+          <a href="/docs" class="hover:text-accent">Docs</a>
+          <span>/</span>
+          {topic && (
+            <>
+              <a href={`/topics/${topic.slug}`} class="hover:text-accent">{topic.title}</a>
+              <span>/</span>
+            </>
+          )}
+          <span class="text-text-primary truncate">{doc.data.title}</span>
+        </nav>
+
+        <h1 class="text-4xl font-bold text-text-heading mb-4 text-balance">
+          {doc.data.title}
+        </h1>
+
+        <p class="text-xl text-text-secondary mb-6">
+          {doc.data.description}
+        </p>
+
+        <div class="flex items-center gap-4 text-sm text-text-secondary">
+          <time datetime={doc.data.date.toISOString()}>
+            {formatDate(doc.data.date)}
+          </time>
+          {doc.data.updated && (
+            <span>
+              Updated: {formatDate(doc.data.updated)}
+            </span>
+          )}
+          {doc.data.pdf && (
+            <a
+              href={doc.data.pdf}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-1 text-accent hover:text-accent-hover"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              PDF
+            </a>
+          )}
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="prose prose-lg max-w-none">
+        <Content />
+      </div>
+
+      <!-- Reactions & Comments -->
+      <footer class="mt-16 pt-8 border-t border-border-subtle">
+        <EmojiReactions postSlug={doc.slug} />
+        <div class="mt-12">
+          <Comments postSlug={doc.slug} />
+        </div>
+      </footer>
+    </article>
+  </div>
+
+  <!-- Side Panel -->
+  <SidePanel
+    headings={headings}
+    prevPost={prev}
+    nextPost={next}
+    type="docs"
+    topicSlug={topicSlug}
+  />
+</BaseLayout>

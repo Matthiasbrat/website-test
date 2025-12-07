@@ -1,0 +1,124 @@
+---
+title: "Async/Await Deep Dive"
+description: "Master asynchronous JavaScript with async/await patterns and best practices."
+date: 2024-02-20
+---
+
+import Callout from '@/components/mdx/Callout.astro';
+import CodeBlock from '@/components/mdx/CodeBlock.astro';
+
+# Async/Await Deep Dive
+
+Async/await is syntactic sugar over Promises that makes asynchronous code look and behave more like synchronous code.
+
+## The Basics
+
+```javascript
+async function fetchUser(id) {
+  const response = await fetch(`/api/users/${id}`);
+  const user = await response.json();
+  return user;
+}
+```
+
+## Error Handling
+
+Always handle errors in async functions:
+
+```javascript
+async function fetchData() {
+  try {
+    const response = await fetch('/api/data');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch:', error);
+    throw error;
+  }
+}
+```
+
+<Callout type="warning">
+Unhandled promise rejections can crash your Node.js application. Always wrap await calls in try/catch or handle errors at the call site.
+</Callout>
+
+## Parallel Execution
+
+Don't await in sequence when you can run in parallel:
+
+```javascript
+// Slow - sequential
+async function slow() {
+  const a = await fetchA();
+  const b = await fetchB();
+  return [a, b];
+}
+
+// Fast - parallel
+async function fast() {
+  const [a, b] = await Promise.all([
+    fetchA(),
+    fetchB()
+  ]);
+  return [a, b];
+}
+```
+
+## Advanced Patterns
+
+### Promise.allSettled
+
+When you need all results regardless of failures:
+
+```javascript
+const results = await Promise.allSettled([
+  fetch('/api/a'),
+  fetch('/api/b'),
+  fetch('/api/c')
+]);
+
+results.forEach((result, index) => {
+  if (result.status === 'fulfilled') {
+    console.log(`Request ${index} succeeded:`, result.value);
+  } else {
+    console.log(`Request ${index} failed:`, result.reason);
+  }
+});
+```
+
+### Rate Limiting
+
+Process items with controlled concurrency:
+
+```javascript
+async function processWithLimit(items, limit, fn) {
+  const results = [];
+  const executing = [];
+
+  for (const item of items) {
+    const promise = fn(item).then(result => {
+      executing.splice(executing.indexOf(promise), 1);
+      return result;
+    });
+
+    results.push(promise);
+    executing.push(promise);
+
+    if (executing.length >= limit) {
+      await Promise.race(executing);
+    }
+  }
+
+  return Promise.all(results);
+}
+```
+
+<Callout type="tip">
+Use libraries like `p-limit` for production rate limiting instead of rolling your own.
+</Callout>
+
+## Conclusion
+
+Async/await makes asynchronous code more readable, but understanding the underlying Promise mechanics is essential for writing efficient code.

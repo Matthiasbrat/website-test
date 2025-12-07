@@ -1,0 +1,115 @@
+---
+title: "Understanding JavaScript Closures"
+description: "A deep dive into closures, one of JavaScript's most powerful features."
+date: 2024-01-15
+---
+
+import Callout from '@/components/mdx/Callout.astro';
+import Aside from '@/components/mdx/Aside.astro';
+
+# Understanding JavaScript Closures
+
+Closures are one of the most fundamental concepts in JavaScript. They enable powerful patterns like data privacy, partial application, and maintaining state in functional programming.
+
+## What is a Closure?
+
+A closure is the combination of a function bundled together with references to its surrounding state (the lexical environment). In other words, a closure gives you access to an outer function's scope from an inner function.
+
+<Aside type="note" title="Definition">
+A closure is created every time a function is created, at function creation time.
+</Aside>
+
+## Basic Example
+
+```javascript
+function createCounter() {
+  let count = 0;
+
+  return function() {
+    count += 1;
+    return count;
+  };
+}
+
+const counter = createCounter();
+console.log(counter()); // 1
+console.log(counter()); // 2
+console.log(counter()); // 3
+```
+
+In this example, the inner function maintains access to `count` even after `createCounter` has finished executing.
+
+## Practical Applications
+
+### Data Privacy
+
+Closures allow you to create private variables:
+
+```javascript
+function createBankAccount(initialBalance) {
+  let balance = initialBalance;
+
+  return {
+    deposit(amount) {
+      balance += amount;
+      return balance;
+    },
+    withdraw(amount) {
+      if (amount > balance) {
+        throw new Error('Insufficient funds');
+      }
+      balance -= amount;
+      return balance;
+    },
+    getBalance() {
+      return balance;
+    }
+  };
+}
+```
+
+<Callout type="tip" title="Best Practice">
+Use closures to encapsulate state when you want to prevent external modification of internal data.
+</Callout>
+
+### Function Factories
+
+```javascript
+function multiply(a) {
+  return function(b) {
+    return a * b;
+  };
+}
+
+const double = multiply(2);
+const triple = multiply(3);
+
+console.log(double(5)); // 10
+console.log(triple(5)); // 15
+```
+
+## Common Pitfalls
+
+### Loop Variables
+
+A classic closure gotcha involves loops:
+
+```javascript
+// Bug: All callbacks log 3
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 100);
+}
+
+// Fix: Use let (block scope)
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 100);
+}
+```
+
+<Callout type="warning">
+Always use `let` or `const` in modern JavaScript to avoid closure-related bugs with loop variables.
+</Callout>
+
+## Conclusion
+
+Closures are not just a theoretical concept—they're a practical tool you use every day in JavaScript. Understanding them deeply will make you a better developer.

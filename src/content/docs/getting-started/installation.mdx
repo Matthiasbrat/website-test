@@ -1,0 +1,93 @@
+---
+title: "Installation Guide"
+description: "Step-by-step instructions for installing and setting up the project."
+date: 2024-01-01
+---
+
+import Callout from '@/components/mdx/Callout.astro';
+
+# Installation Guide
+
+Get started with the project in minutes by following these installation steps.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- Node.js 18.x or later
+- npm or pnpm
+- Git
+
+## Quick Start
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/username/project.git
+cd project
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+# or
+pnpm install
+```
+
+### 3. Configure Environment
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your configuration:
+
+```env
+DATABASE_URL=postgresql://localhost:5432/mydb
+REDIS_URL=redis://localhost:6379
+```
+
+<Callout type="warning">
+Never commit your `.env` file to version control. It contains sensitive credentials.
+</Callout>
+
+### 4. Start Development Server
+
+```bash
+npm run dev
+```
+
+The development server will start at `http://localhost:4321`.
+
+## Docker Setup
+
+For a containerized setup:
+
+```bash
+docker-compose up -d
+```
+
+This starts all required services (PostgreSQL, Redis, Meilisearch).
+
+<Callout type="tip">
+Use Docker for development to ensure consistent environments across your team.
+</Callout>
+
+## Verification
+
+Verify your installation by running:
+
+```bash
+npm run build
+```
+
+If the build completes without errors, you're all set!
+
+## Next Steps
+
+- Read the [First Steps](/docs/getting-started/first-steps) guide
+- Explore the [Configuration](/docs/getting-started/configuration) options
+- Join our community Discord

@@ -1,0 +1,51 @@
+---
+interface Props {
+  url?: string;
+  uri?: string;
+  type?: 'track' | 'album' | 'playlist' | 'episode' | 'show';
+  height?: number;
+}
+
+const { url, uri, type = 'track', height } = Astro.props;
+
+// Extract Spotify ID from URL or URI
+let spotifyId = '';
+let contentType = type;
+
+if (uri) {
+  // spotify:track:4iV5W9uYEdYUVa79Axb7Rh
+  const parts = uri.split(':');
+  if (parts.length >= 3) {
+    contentType = parts[1] as typeof type;
+    spotifyId = parts[2];
+  }
+} else if (url) {
+  // https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
+  const match = url.match(/open\.spotify\.com\/(track|album|playlist|episode|show)\/([a-zA-Z0-9]+)/);
+  if (match) {
+    contentType = match[1] as typeof type;
+    spotifyId = match[2];
+  }
+}
+
+const embedHeight = height || (contentType === 'track' || contentType === 'episode' ? 152 : 352);
+---
+
+{spotifyId ? (
+  <div class="my-6 rounded-lg overflow-hidden">
+    <iframe
+      src={`https://open.spotify.com/embed/${contentType}/${spotifyId}?utm_source=generator&theme=0`}
+      width="100%"
+      height={embedHeight}
+      frameborder="0"
+      allowfullscreen
+      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+      loading="lazy"
+      class="rounded-lg"
+    />
+  </div>
+) : (
+  <div class="my-6 p-4 rounded-lg bg-bg-secondary text-text-secondary text-center">
+    Invalid Spotify URL or URI
+  </div>
+)}

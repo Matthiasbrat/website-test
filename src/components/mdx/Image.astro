@@ -1,0 +1,90 @@
+---
+interface Props {
+  src: string;
+  alt: string;
+  caption?: string;
+  lightbox?: boolean;
+}
+
+const { src, alt, caption, lightbox = true } = Astro.props;
+const imageId = `img-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<figure class="my-6">
+  <div class={lightbox ? 'cursor-zoom-in' : ''}>
+    <img
+      src={src}
+      alt={alt}
+      class="rounded-lg w-full"
+      loading="lazy"
+      data-lightbox={lightbox ? imageId : undefined}
+    />
+  </div>
+  {caption && (
+    <figcaption class="text-center text-sm text-text-secondary mt-2">
+      {caption}
+    </figcaption>
+  )}
+</figure>
+
+{lightbox && (
+  <div
+    id={`lightbox-${imageId}`}
+    class="lightbox fixed inset-0 z-[100] hidden items-center justify-center bg-bg-primary/95 backdrop-blur-sm p-4"
+    data-lightbox-container={imageId}
+  >
+    <button
+      class="absolute top-4 right-4 p-2 text-text-secondary hover:text-text-primary"
+      data-lightbox-close
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+    <img
+      src={src}
+      alt={alt}
+      class="max-w-full max-h-full object-contain rounded-lg"
+    />
+    {caption && (
+      <p class="absolute bottom-4 left-1/2 -translate-x-1/2 text-text-secondary text-sm">
+        {caption}
+      </p>
+    )}
+  </div>
+)}
+
+<script>
+  // Lightbox functionality
+  document.querySelectorAll('[data-lightbox]').forEach(img => {
+    const lightboxId = img.getAttribute('data-lightbox');
+    const lightbox = document.querySelector(`[data-lightbox-container="${lightboxId}"]`);
+
+    if (lightbox) {
+      img.addEventListener('click', () => {
+        lightbox.classList.remove('hidden');
+        lightbox.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+      });
+
+      lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox || (e.target as Element).hasAttribute('data-lightbox-close')) {
+          lightbox.classList.add('hidden');
+          lightbox.classList.remove('flex');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.lightbox').forEach(lb => {
+        lb.classList.add('hidden');
+        lb.classList.remove('flex');
+      });
+      document.body.style.overflow = '';
+    }
+  });
+</script>

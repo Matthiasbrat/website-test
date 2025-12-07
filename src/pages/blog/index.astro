@@ -1,0 +1,95 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAllBlogPosts, getTopics, formatDate, getTopicSlugFromPost } from '../../lib/content';
+
+const posts = await getAllBlogPosts();
+const topics = await getTopics('blog');
+
+// Group posts by topic
+const postsByTopic = new Map<string, typeof posts>();
+posts.forEach(post => {
+  const topicSlug = getTopicSlugFromPost(post);
+  if (!postsByTopic.has(topicSlug)) {
+    postsByTopic.set(topicSlug, []);
+  }
+  postsByTopic.get(topicSlug)?.push(post);
+});
+---
+
+<BaseLayout title="Blog" description="Technical articles and tutorials">
+  <div class="max-w-6xl mx-auto px-4 py-12">
+    <header class="mb-12">
+      <h1 class="text-4xl font-bold text-text-heading mb-4">Blog</h1>
+      <p class="text-text-secondary text-lg">
+        Technical articles, tutorials, and thoughts on software development.
+      </p>
+    </header>
+
+    <!-- Topic filters -->
+    <div class="flex flex-wrap gap-2 mb-8">
+      <a
+        href="/blog"
+        class="px-4 py-2 rounded-lg bg-accent text-accent-text text-sm font-medium"
+      >
+        All
+      </a>
+      {topics.map(topic => (
+        <a
+          href={`/topics/${topic.slug}`}
+          class="px-4 py-2 rounded-lg bg-bg-secondary hover:bg-bg-hover text-text-primary text-sm font-medium border border-border-subtle transition-colors"
+        >
+          {topic.title}
+        </a>
+      ))}
+    </div>
+
+    <!-- Posts grid -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {posts.map(post => {
+        const topicSlug = getTopicSlugFromPost(post);
+        const topic = topics.find(t => t.slug === topicSlug);
+        const postSlug = post.slug.split('/').pop();
+
+        return (
+          <a
+            href={`/blog/${topicSlug}/${postSlug}`}
+            class="glass-card p-6 card-hover group"
+          >
+            {post.data.banner && (
+              <div class="aspect-video rounded-lg overflow-hidden mb-4 -mx-2 -mt-2">
+                <img
+                  src={post.data.banner}
+                  alt={post.data.title}
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+              </div>
+            )}
+            <div class="flex items-center gap-2 mb-3">
+              {topic && (
+                <span class="px-2 py-0.5 text-xs rounded bg-bg-tertiary text-text-secondary">
+                  {topic.title}
+                </span>
+              )}
+              <time class="text-xs text-text-secondary">
+                {formatDate(post.data.date)}
+              </time>
+            </div>
+            <h2 class="text-lg font-semibold text-text-heading group-hover:text-accent transition-colors mb-2">
+              {post.data.title}
+            </h2>
+            <p class="text-text-secondary text-sm line-clamp-3">
+              {post.data.description}
+            </p>
+          </a>
+        );
+      })}
+    </div>
+
+    {posts.length === 0 && (
+      <div class="text-center py-12">
+        <p class="text-text-secondary">No blog posts yet.</p>
+      </div>
+    )}
+  </div>
+</BaseLayout>

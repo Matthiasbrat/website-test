@@ -6,7 +6,7 @@ A personal blog and documentation site built with Astro, featuring 40+ developer
 
 - **40+ Developer Themes**: One Dark, Dracula, Nord, GitHub, Catppuccin, and many more
 - **MDX Content**: Blog posts and documentation with custom components
-- **Full-Text Search**: Powered by Meilisearch with fuzzy matching
+- **Full-Text Search**: Custom fuzzy search with Levenshtein distance matching
 - **Comments & Reactions**: Authenticated comments and anonymous emoji reactions
 - **Responsive Design**: Mobile-first with glassmorphism UI elements
 - **Client-Side Routing**: Smooth navigation without full page reloads
@@ -17,7 +17,7 @@ A personal blog and documentation site built with Astro, featuring 40+ developer
 ### Prerequisites
 
 - Node.js 18+
-- Docker & Docker Compose
+- Docker & Docker Compose (for PostgreSQL and Redis)
 
 ### Installation
 
@@ -66,7 +66,7 @@ src/
 │   ├── auth.ts         # Better Auth configuration
 │   ├── content.ts      # Content loading utilities
 │   ├── db.ts           # Database operations
-│   ├── search.ts       # Search functionality
+│   ├── search.ts       # Custom search with fuzzy matching
 │   └── themes.ts       # Theme definitions
 ├── pages/              # Route definitions
 │   ├── api/            # API endpoints
@@ -118,13 +118,12 @@ Dark themes: One Dark, Dracula, Nord, Tokyo Night, Catppuccin Mocha, etc.
 
 ## Search
 
-Search is powered by Meilisearch. To rebuild the search index:
+Search uses a custom implementation with:
+- **Fuzzy matching** using Levenshtein distance for typo tolerance
+- **Weighted scoring** (title > description > topic > content)
+- **Word-level matching** with prefix and substring support
 
-```bash
-npm run index
-```
-
-This is automatically run during the build process.
+The search index is automatically built during `npm run build` and stored as a JSON file. No external services required.
 
 ## Authentication
 
@@ -141,8 +140,6 @@ Configure OAuth credentials in your `.env` file.
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis connection string |
-| `MEILISEARCH_HOST` | Meilisearch server URL |
-| `MEILISEARCH_API_KEY` | Meilisearch API key |
 | `BETTER_AUTH_SECRET` | Secret for session encryption |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
@@ -160,7 +157,7 @@ Configure OAuth credentials in your `.env` file.
    npm run preview
    ```
 
-For production, ensure Docker services are running and environment variables are configured.
+For production, ensure Docker services (PostgreSQL, Redis) are running and environment variables are configured.
 
 ## License
 

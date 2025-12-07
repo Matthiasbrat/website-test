@@ -5,10 +5,9 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "build": "node scripts/build-search-index.js && astro build",
     "preview": "astro preview",
-    "astro": "astro",
-    "index": "node scripts/index-search.js"
+    "astro": "astro"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.2",
@@ -16,7 +15,6 @@
     "@astrojs/tailwind": "^6.0.0",
     "astro": "^5.1.1",
     "better-auth": "^1.1.10",
-    "meilisearch": "^0.45.0",
     "pg": "^8.13.1",
     "redis": "^4.7.0",
     "shiki": "^1.24.2",

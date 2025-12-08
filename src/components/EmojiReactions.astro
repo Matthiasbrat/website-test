@@ -37,12 +37,12 @@ const emojis = [
   const postSlug = container?.getAttribute('data-post-slug');
   const buttons = container?.querySelectorAll('.reaction-btn');
 
-  // Get user's anonymous ID from localStorage
-  function getAnonymousId() {
-    let id = localStorage.getItem('anonymous_user_id');
+  // Get visitor ID from localStorage
+  function getVisitorId() {
+    let id = localStorage.getItem('visitor_id');
     if (!id) {
-      id = 'anon_' + Math.random().toString(36).slice(2, 11);
-      localStorage.setItem('anonymous_user_id', id);
+      id = 'visitor_' + Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+      localStorage.setItem('visitor_id', id);
     }
     return id;
   }
@@ -50,7 +50,8 @@ const emojis = [
   // Load reactions
   async function loadReactions() {
     try {
-      const response = await fetch(`/api/reactions?slug=${encodeURIComponent(postSlug || '')}`);
+      const visitorId = getVisitorId();
+      const response = await fetch(`/api/reactions?slug=${encodeURIComponent(postSlug || '')}&visitorId=${encodeURIComponent(visitorId)}`);
       if (response.ok) {
         const data = await response.json();
         updateReactionCounts(data.counts);
@@ -93,7 +94,7 @@ const emojis = [
         body: JSON.stringify({
           slug: postSlug,
           emoji,
-          anonymousId: getAnonymousId(),
+          visitorId: getVisitorId(),
         }),
       });
 

@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { getComments, createComment } from '../../../lib/db';
-import { auth } from '../../../lib/auth';
 
 export const GET: APIRoute = async ({ url }) => {
   const slug = url.searchParams.get('slug');
@@ -13,7 +12,7 @@ export const GET: APIRoute = async ({ url }) => {
   }
 
   try {
-    const comments = await getComments(slug);
+    const comments = getComments(slug);
     return new Response(JSON.stringify(comments), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -27,37 +26,27 @@ export const GET: APIRoute = async ({ url }) => {
   }
 };
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
-    // Get session
-    const sessionToken = cookies.get('better-auth.session_token')?.value;
-    if (!sessionToken) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Validate session with Better Auth
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     const body = await request.json();
-    const { slug, content, parentId } = body;
+    const { slug, authorName, content, parentId } = body;
 
-    if (!slug || !content) {
+    if (!slug || !authorName || !content) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const comment = await createComment(slug, session.user.id, content, parentId);
+    // Basic validation
+    if (authorName.length > 50 || content.length > 5000) {
+      return new Response(JSON.stringify({ error: 'Content too long' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const comment = createComment(slug, authorName.trim(), content.trim(), parentId);
     return new Response(JSON.stringify(comment), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },

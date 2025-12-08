@@ -5,23 +5,16 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "build": "node scripts/build-search-index.js && astro build",
     "preview": "astro preview",
-    "astro": "astro",
-    "index": "node scripts/index-search.js"
+    "astro": "astro"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.2",
     "@astrojs/node": "^9.0.1",
     "@astrojs/tailwind": "^6.0.0",
     "astro": "^5.1.1",
-    "better-auth": "^1.1.10",
-    "meilisearch": "^0.45.0",
-    "pg": "^8.13.1",
-    "redis": "^4.7.0",
-    "shiki": "^1.24.2",
-    "gray-matter": "^4.0.3",
-    "marked": "^15.0.4"
+    "gray-matter": "^4.0.3"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",

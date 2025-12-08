@@ -1,170 +1,177 @@
-import { Pool } from 'pg';
+/**
+ * Simple JSON file-based storage for POC
+ * In production, this would be replaced with a real database
+ */
 
-// Create database pool
-const pool = new Pool({
-  connectionString: import.meta.env.DATABASE_URL || process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/matthias_docs',
-});
+import fs from 'node:fs';
+import path from 'node:path';
 
-export { pool };
+const DATA_DIR = path.join(process.cwd(), 'data');
+const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
+const REACTIONS_FILE = path.join(DATA_DIR, 'reactions.json');
 
-// Initialize database tables
-export async function initDatabase() {
-  const client = await pool.connect();
-
-  try {
-    // Comments table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        post_slug VARCHAR(500) NOT NULL,
-        user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
-        parent_id UUID REFERENCES comments(id) ON DELETE CASCADE,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        deleted BOOLEAN DEFAULT FALSE
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_comments_post_slug ON comments(post_slug);
-      CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON comments(parent_id);
-    `);
-
-    // Reactions table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS reactions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        post_slug VARCHAR(500) NOT NULL,
-        emoji VARCHAR(10) NOT NULL,
-        anonymous_id VARCHAR(100),
-        user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        UNIQUE(post_slug, emoji, anonymous_id),
-        UNIQUE(post_slug, emoji, user_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_reactions_post_slug ON reactions(post_slug);
-    `);
-
-    console.log('Database tables initialized');
-  } finally {
-    client.release();
+// Ensure data directory exists
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 }
 
-// Comment operations
-export async function getComments(postSlug: string) {
-  const result = await pool.query(`
-    SELECT
-      c.id,
-      c.post_slug as "postSlug",
-      c.user_id as "userId",
-      c.parent_id as "parentId",
-      c.content,
-      c.created_at as "createdAt",
-      c.updated_at as "updatedAt",
-      u.name as "userName",
-      u.image as "userImage"
-    FROM comments c
-    LEFT JOIN "user" u ON c.user_id = u.id
-    WHERE c.post_slug = $1 AND c.deleted = FALSE
-    ORDER BY c.created_at ASC
-  `, [postSlug]);
-
-  return result.rows.map(row => ({
-    ...row,
-    user: row.userName ? { name: row.userName, image: row.userImage } : null,
-  }));
+// Read JSON file safely
+function readJsonFile<T>(filePath: string, defaultValue: T): T {
+  try {
+    ensureDataDir();
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error(`Error reading ${filePath}:`, error);
+  }
+  return defaultValue;
 }
 
-export async function createComment(
+// Write JSON file safely
+function writeJsonFile<T>(filePath: string, data: T): void {
+  try {
+    ensureDataDir();
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error(`Error writing ${filePath}:`, error);
+  }
+}
+
+// Generate simple ID
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+// Comment types
+export interface Comment {
+  id: string;
+  postSlug: string;
+  parentId: string | null;
+  authorName: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Reaction types
+export interface Reaction {
+  id: string;
+  postSlug: string;
+  emoji: string;
+  visitorId: string;
+}
+
+// Get all comments for a post
+export function getComments(postSlug: string): Comment[] {
+  const allComments = readJsonFile<Comment[]>(COMMENTS_FILE, []);
+  return allComments
+    .filter(c => c.postSlug === postSlug)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
+// Create a new comment
+export function createComment(
   postSlug: string,
-  userId: string,
+  authorName: string,
   content: string,
   parentId?: string
-) {
-  const result = await pool.query(`
-    INSERT INTO comments (post_slug, user_id, content, parent_id)
-    VALUES ($1, $2, $3, $4)
-    RETURNING id, created_at as "createdAt"
-  `, [postSlug, userId, content, parentId || null]);
+): Comment {
+  const allComments = readJsonFile<Comment[]>(COMMENTS_FILE, []);
 
-  return result.rows[0];
+  const comment: Comment = {
+    id: generateId(),
+    postSlug,
+    parentId: parentId || null,
+    authorName,
+    content,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  allComments.push(comment);
+  writeJsonFile(COMMENTS_FILE, allComments);
+
+  return comment;
 }
 
-export async function updateComment(id: string, userId: string, content: string) {
-  const result = await pool.query(`
-    UPDATE comments
-    SET content = $1, updated_at = NOW()
-    WHERE id = $2 AND user_id = $3 AND deleted = FALSE
-    RETURNING id
-  `, [content, id, userId]);
+// Update a comment
+export function updateComment(id: string, content: string): Comment | null {
+  const allComments = readJsonFile<Comment[]>(COMMENTS_FILE, []);
+  const index = allComments.findIndex(c => c.id === id);
 
-  return result.rows[0];
+  if (index === -1) return null;
+
+  allComments[index].content = content;
+  allComments[index].updatedAt = new Date().toISOString();
+
+  writeJsonFile(COMMENTS_FILE, allComments);
+  return allComments[index];
 }
 
-export async function deleteComment(id: string, userId: string) {
-  const result = await pool.query(`
-    UPDATE comments
-    SET deleted = TRUE, updated_at = NOW()
-    WHERE id = $1 AND user_id = $2
-    RETURNING id
-  `, [id, userId]);
+// Delete a comment
+export function deleteComment(id: string): boolean {
+  const allComments = readJsonFile<Comment[]>(COMMENTS_FILE, []);
+  const index = allComments.findIndex(c => c.id === id);
 
-  return result.rows[0];
+  if (index === -1) return false;
+
+  allComments.splice(index, 1);
+  writeJsonFile(COMMENTS_FILE, allComments);
+  return true;
 }
 
-// Reaction operations
-export async function getReactions(postSlug: string, anonymousId?: string) {
-  // Get counts
-  const countsResult = await pool.query(`
-    SELECT emoji, COUNT(*) as count
-    FROM reactions
-    WHERE post_slug = $1
-    GROUP BY emoji
-  `, [postSlug]);
+// Get reactions for a post
+export function getReactions(postSlug: string, visitorId?: string): {
+  counts: Record<string, number>;
+  userReactions: string[];
+} {
+  const allReactions = readJsonFile<Reaction[]>(REACTIONS_FILE, []);
+  const postReactions = allReactions.filter(r => r.postSlug === postSlug);
 
+  // Count reactions by emoji
   const counts: Record<string, number> = {};
-  countsResult.rows.forEach(row => {
-    counts[row.emoji] = parseInt(row.count);
+  postReactions.forEach(r => {
+    counts[r.emoji] = (counts[r.emoji] || 0) + 1;
   });
 
   // Get user's reactions
-  let userReactions: string[] = [];
-  if (anonymousId) {
-    const userResult = await pool.query(`
-      SELECT emoji FROM reactions
-      WHERE post_slug = $1 AND anonymous_id = $2
-    `, [postSlug, anonymousId]);
-    userReactions = userResult.rows.map(r => r.emoji);
-  }
+  const userReactions = visitorId
+    ? postReactions.filter(r => r.visitorId === visitorId).map(r => r.emoji)
+    : [];
 
   return { counts, userReactions };
 }
 
-export async function toggleReaction(
+// Toggle a reaction
+export function toggleReaction(
   postSlug: string,
   emoji: string,
-  anonymousId: string
-) {
-  // Check if reaction exists
-  const existing = await pool.query(`
-    SELECT id FROM reactions
-    WHERE post_slug = $1 AND emoji = $2 AND anonymous_id = $3
-  `, [postSlug, emoji, anonymousId]);
+  visitorId: string
+): { counts: Record<string, number>; userReactions: string[] } {
+  const allReactions = readJsonFile<Reaction[]>(REACTIONS_FILE, []);
 
-  if (existing.rows.length > 0) {
-    // Remove reaction
-    await pool.query(`
-      DELETE FROM reactions WHERE id = $1
-    `, [existing.rows[0].id]);
+  // Check if reaction already exists
+  const existingIndex = allReactions.findIndex(
+    r => r.postSlug === postSlug && r.emoji === emoji && r.visitorId === visitorId
+  );
+
+  if (existingIndex !== -1) {
+    // Remove existing reaction
+    allReactions.splice(existingIndex, 1);
   } else {
-    // Add reaction
-    await pool.query(`
-      INSERT INTO reactions (post_slug, emoji, anonymous_id)
-      VALUES ($1, $2, $3)
-      ON CONFLICT DO NOTHING
-    `, [postSlug, emoji, anonymousId]);
+    // Add new reaction
+    allReactions.push({
+      id: generateId(),
+      postSlug,
+      emoji,
+      visitorId,
+    });
   }
 
-  return getReactions(postSlug, anonymousId);
+  writeJsonFile(REACTIONS_FILE, allReactions);
+  return getReactions(postSlug, visitorId);
 }

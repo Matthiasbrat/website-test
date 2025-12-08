@@ -1,4 +1,8 @@
-import { MeiliSearch } from 'meilisearch';
+/**
+ * Build search index at build time
+ * Generates a JSON file with all searchable content
+ */
+
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
@@ -7,17 +11,14 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 
-const client = new MeiliSearch({
-  host: process.env.MEILISEARCH_HOST || 'http://localhost:7700',
-  apiKey: process.env.MEILISEARCH_API_KEY || 'masterKey',
-});
-
-const INDEX_NAME = 'posts';
-
-async function loadTopicMetadata(type, topicSlug) {
+/**
+ * Load topic metadata from _topic.yaml
+ */
+function loadTopicMetadata(type, topicSlug) {
   try {
     const topicPath = path.join(rootDir, 'src/content', type, topicSlug, '_topic.yaml');
     const content = fs.readFileSync(topicPath, 'utf-8');
+
     // Simple YAML parser for basic key-value pairs
     const lines = content.split('\n');
     const metadata = {};
@@ -33,7 +34,34 @@ async function loadTopicMetadata(type, topicSlug) {
   }
 }
 
-async function collectPosts(type) {
+/**
+ * Strip MDX/HTML tags and clean content for indexing
+ */
+function cleanContent(content) {
+  return content
+    // Remove import statements
+    .replace(/^import\s+.+$/gm, '')
+    // Remove JSX/HTML tags
+    .replace(/<[^>]+>/g, ' ')
+    // Remove code blocks
+    .replace(/```[\s\S]*?```/g, ' ')
+    // Remove inline code
+    .replace(/`[^`]+`/g, ' ')
+    // Remove markdown links but keep text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // Remove markdown headers markers
+    .replace(/^#+\s*/gm, '')
+    // Remove markdown bold/italic
+    .replace(/[*_]{1,2}([^*_]+)[*_]{1,2}/g, '$1')
+    // Normalize whitespace
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Collect all posts from a content type
+ */
+function collectPosts(type) {
   const baseDir = path.join(rootDir, 'src/content', type);
   const posts = [];
 
@@ -46,7 +74,7 @@ async function collectPosts(type) {
 
   for (const topicDir of topicDirs) {
     const topicSlug = topicDir.name;
-    const topic = await loadTopicMetadata(type, topicSlug);
+    const topic = loadTopicMetadata(type, topicSlug);
     const topicPath = path.join(baseDir, topicSlug);
 
     const files = fs.readdirSync(topicPath)
@@ -57,6 +85,7 @@ async function collectPosts(type) {
       const content = fs.readFileSync(filePath, 'utf-8');
       const { data: frontmatter, content: body } = matter(content);
 
+      // Skip drafts
       if (frontmatter.draft) continue;
 
       const postSlug = file.replace(/\.mdx?$/, '');
@@ -66,7 +95,7 @@ async function collectPosts(type) {
         id,
         title: frontmatter.title || '',
         description: frontmatter.description || '',
-        content: body.replace(/<[^>]*>/g, '').slice(0, 5000), // Strip HTML, limit content
+        content: cleanContent(body).slice(0, 10000), // Limit content size
         topic: topicSlug,
         topicTitle: topic?.title || topicSlug,
         type,
@@ -79,58 +108,31 @@ async function collectPosts(type) {
   return posts;
 }
 
-async function main() {
-  console.log('Starting search indexing...');
+/**
+ * Main build function
+ */
+function main() {
+  console.log('Building search index...');
 
   // Collect all posts
-  const blogPosts = await collectPosts('blog');
-  const docsPosts = await collectPosts('docs');
+  const blogPosts = collectPosts('blog');
+  const docsPosts = collectPosts('docs');
   const allPosts = [...blogPosts, ...docsPosts];
 
   console.log(`Found ${blogPosts.length} blog posts and ${docsPosts.length} docs`);
 
-  if (allPosts.length === 0) {
-    console.log('No posts to index');
-    return;
+  // Ensure public directory exists
+  const publicDir = path.join(rootDir, 'public');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
   }
 
-  try {
-    // Get or create index
-    const index = client.index(INDEX_NAME);
+  // Write search index
+  const indexPath = path.join(publicDir, 'search-index.json');
+  fs.writeFileSync(indexPath, JSON.stringify(allPosts, null, 2));
 
-    // Configure settings
-    await index.updateSettings({
-      searchableAttributes: ['title', 'description', 'content', 'topicTitle'],
-      filterableAttributes: ['type', 'topic'],
-      sortableAttributes: ['date'],
-      rankingRules: [
-        'words',
-        'typo',
-        'proximity',
-        'attribute',
-        'sort',
-        'exactness',
-      ],
-    });
-
-    console.log('Index settings updated');
-
-    // Clear existing documents
-    await index.deleteAllDocuments();
-    console.log('Cleared existing documents');
-
-    // Add new documents
-    const result = await index.addDocuments(allPosts);
-    console.log(`Indexing task queued: ${result.taskUid}`);
-
-    // Wait for indexing to complete
-    await client.waitForTask(result.taskUid);
-    console.log('Indexing complete!');
-
-  } catch (error) {
-    console.error('Indexing failed:', error);
-    process.exit(1);
-  }
+  console.log(`Search index written to ${indexPath}`);
+  console.log(`Total documents indexed: ${allPosts.length}`);
 }
 
 main();

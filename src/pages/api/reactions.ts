@@ -3,7 +3,7 @@ import { getReactions, toggleReaction } from '../../lib/db';
 
 export const GET: APIRoute = async ({ url }) => {
   const slug = url.searchParams.get('slug');
-  const anonymousId = url.searchParams.get('anonymousId');
+  const visitorId = url.searchParams.get('visitorId');
 
   if (!slug) {
     return new Response(JSON.stringify({ error: 'Missing slug' }), {
@@ -13,7 +13,7 @@ export const GET: APIRoute = async ({ url }) => {
   }
 
   try {
-    const data = await getReactions(slug, anonymousId || undefined);
+    const data = getReactions(slug, visitorId || undefined);
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -30,16 +30,16 @@ export const GET: APIRoute = async ({ url }) => {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { slug, emoji, anonymousId } = body;
+    const { slug, emoji, visitorId } = body;
 
-    if (!slug || !emoji || !anonymousId) {
+    if (!slug || !emoji || !visitorId) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const data = await toggleReaction(slug, emoji, anonymousId);
+    const data = toggleReaction(slug, emoji, visitorId);
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

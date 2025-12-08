@@ -6,18 +6,18 @@ A personal blog and documentation site built with Astro, featuring 40+ developer
 
 - **40+ Developer Themes**: One Dark, Dracula, Nord, GitHub, Catppuccin, and many more
 - **MDX Content**: Blog posts and documentation with custom components
-- **Full-Text Search**: Powered by Meilisearch with fuzzy matching
-- **Comments & Reactions**: Authenticated comments and anonymous emoji reactions
+- **Full-Text Search**: Custom fuzzy search with Levenshtein distance matching
+- **Comments & Reactions**: Simple name-based comments and emoji reactions
 - **Responsive Design**: Mobile-first with glassmorphism UI elements
 - **Client-Side Routing**: Smooth navigation without full page reloads
 - **SEO Optimized**: Meta tags, Open Graph, Twitter cards, RSS feed, sitemap
+- **Zero External Dependencies**: No database or external services required (POC)
 
 ## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
-- Docker & Docker Compose
 
 ### Installation
 
@@ -32,23 +32,12 @@ A personal blog and documentation site built with Astro, featuring 40+ developer
    npm install
    ```
 
-3. Set up environment variables:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your credentials
-   ```
-
-4. Start Docker services:
-   ```bash
-   docker-compose up -d
-   ```
-
-5. Start the development server:
+3. Start the development server:
    ```bash
    npm run dev
    ```
 
-6. Open http://localhost:4321
+4. Open http://localhost:4321
 
 ## Project Structure
 
@@ -63,15 +52,16 @@ src/
 │   └── referrals/      # Referral profiles
 ├── layouts/            # Page layouts
 ├── lib/                # Utility functions
-│   ├── auth.ts         # Better Auth configuration
 │   ├── content.ts      # Content loading utilities
-│   ├── db.ts           # Database operations
-│   ├── search.ts       # Search functionality
+│   ├── db.ts           # JSON file storage (POC)
+│   ├── search.ts       # Custom search with fuzzy matching
 │   └── themes.ts       # Theme definitions
 ├── pages/              # Route definitions
 │   ├── api/            # API endpoints
 │   └── ...
 └── styles/             # Global styles and themes
+
+data/                   # JSON storage for comments/reactions (created at runtime)
 ```
 
 ## Content Management
@@ -118,35 +108,27 @@ Dark themes: One Dark, Dracula, Nord, Tokyo Night, Catppuccin Mocha, etc.
 
 ## Search
 
-Search is powered by Meilisearch. To rebuild the search index:
+Search uses a custom implementation with:
+- **Fuzzy matching** using Levenshtein distance for typo tolerance
+- **Weighted scoring** (title > description > topic > content)
+- **Word-level matching** with prefix and substring support
 
-```bash
-npm run index
-```
+The search index is automatically built during `npm run build` and stored as a JSON file. No external services required.
 
-This is automatically run during the build process.
+## Comments & Reactions
 
-## Authentication
+This POC uses simple JSON file storage for comments and reactions:
 
-The site uses Better Auth for authentication:
+- **Comments**: Users enter their name and comment (stored in `data/comments.json`)
+- **Reactions**: Emoji reactions tracked by visitor ID (stored in `data/reactions.json`)
 
-- Google OAuth for commenting
-- Anonymous sessions for emoji reactions
-
-Configure OAuth credentials in your `.env` file.
+The visitor ID and author name are saved in localStorage for convenience.
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
-| `MEILISEARCH_HOST` | Meilisearch server URL |
-| `MEILISEARCH_API_KEY` | Meilisearch API key |
-| `BETTER_AUTH_SECRET` | Secret for session encryption |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `PUBLIC_SITE_URL` | Public URL of the site |
+| `PUBLIC_SITE_URL` | Public URL of the site (default: http://localhost:4321) |
 
 ## Deployment
 
@@ -160,7 +142,7 @@ Configure OAuth credentials in your `.env` file.
    npm run preview
    ```
 
-For production, ensure Docker services are running and environment variables are configured.
+The site uses JSON file storage for comments and reactions, stored in the `data/` directory. Ensure this directory is writable in production.
 
 ## License
 

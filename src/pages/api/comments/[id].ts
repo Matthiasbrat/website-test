@@ -1,16 +1,13 @@
 import type { APIRoute } from 'astro';
 import { updateComment, deleteComment } from '../../../lib/db';
-import { auth } from '../../../lib/auth';
 
-export const PUT: APIRoute = async ({ params, request, cookies }) => {
+export const PUT: APIRoute = async ({ params, request }) => {
   try {
     const { id } = params;
 
-    // Get session
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'Missing comment ID' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -25,9 +22,16 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
       });
     }
 
-    const result = await updateComment(id!, session.user.id, content);
+    if (content.length > 5000) {
+      return new Response(JSON.stringify({ error: 'Content too long' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const result = updateComment(id, content.trim());
     if (!result) {
-      return new Response(JSON.stringify({ error: 'Comment not found or not authorized' }), {
+      return new Response(JSON.stringify({ error: 'Comment not found' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -46,22 +50,20 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ params, request }) => {
+export const DELETE: APIRoute = async ({ params }) => {
   try {
     const { id } = params;
 
-    // Get session
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
+    if (!id) {
+      return new Response(JSON.stringify({ error: 'Missing comment ID' }), {
+        status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const result = await deleteComment(id!, session.user.id);
+    const result = deleteComment(id);
     if (!result) {
-      return new Response(JSON.stringify({ error: 'Comment not found or not authorized' }), {
+      return new Response(JSON.stringify({ error: 'Comment not found' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
       });
